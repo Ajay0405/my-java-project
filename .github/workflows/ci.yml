@@ -4,12 +4,12 @@ on:
   push:
     branches:
       - main
-      - 'pbi/*'
+      - 'pbi-*'
 
   pull_request:
     branches:
       - main
-      - 'pbi/*'
+      - 'pbi-*'
 
   workflow_dispatch:
 
