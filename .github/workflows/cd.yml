@@ -1,8 +1,8 @@
-name: Java CD
+name: Myjava1 CD
 
 on:
   workflow_run:
-    workflows: ["Java CI"]
+    workflows: ["HelloWorld CI"]
     types:
       - completed
 
