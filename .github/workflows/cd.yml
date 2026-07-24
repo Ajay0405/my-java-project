@@ -1,8 +1,9 @@
-name: Myjava1 CD
+name: Java-Project CD
 
 on:
   workflow_run:
-    workflows: ["HelloWorld CI"]
+    workflows:
+      - "Java-Project CI"
     types:
       - completed
 
@@ -11,7 +12,7 @@ on:
       image_tag:
         description: "Docker Image Tag"
         required: true
-        default: "3"
+        default: "latest"
         type: string
 
 env:
@@ -21,16 +22,16 @@ jobs:
   deploy:
     runs-on: self-hosted
 
-    if: |
+    if: >
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'workflow_run' &&
-       github.event.workflow_run.conclusion == 'success')
+      github.event.workflow_run.conclusion == 'success')
 
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Verify Cluster
+      - name: Verify Kubernetes Cluster
         shell: powershell
         run: |
           kubectl get nodes
@@ -43,7 +44,7 @@ jobs:
             "IMAGE_TAG=${{ github.event.inputs.image_tag }}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           }
           else {
-            "IMAGE_TAG=3" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            "IMAGE_TAG=${{ github.event.workflow_run.run_number }}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           }
 
       - name: Deploy Kubernetes Manifests
@@ -56,7 +57,9 @@ jobs:
       - name: Update Deployment Image
         shell: powershell
         run: |
-          kubectl set image deployment/java-app java-app=${env:IMAGE_NAME}:${env:IMAGE_TAG} -n dev
+          kubectl set image deployment/java-app `
+            java-app=${env:IMAGE_NAME}:${env:IMAGE_TAG} `
+            -n dev
 
       - name: Wait for Rollout
         shell: powershell
