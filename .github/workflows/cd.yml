@@ -29,11 +29,20 @@ jobs:
     if: >
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'workflow_run' &&
-      github.event.workflow_run.conclusion == 'success')
+       github.event.workflow_run.conclusion == 'success')
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Debug Workspace
+        shell: powershell
+        run: |
+          Write-Host "Workspace: $env:GITHUB_WORKSPACE"
+          Get-Location
+          Get-ChildItem
+          Get-ChildItem $env:GITHUB_WORKSPACE
+          Get-ChildItem $env:GITHUB_WORKSPACE\k8s
 
       - name: Verify Kubernetes Cluster
         shell: powershell
@@ -54,16 +63,14 @@ jobs:
       - name: Deploy Kubernetes Manifests
         shell: powershell
         run: |
-          kubectl apply -f k8s/namespace.yaml
-          kubectl apply -f k8s/deployment.yaml
-          kubectl apply -f k8s/service.yaml
+          kubectl apply -f k8s/namespace.yml
+          kubectl apply -f k8s/deployment.yml
+          kubectl apply -f k8s/service.yml
 
       - name: Update Deployment Image
         shell: powershell
         run: |
-          kubectl set image deployment/java-app `
-            java-app=${env:IMAGE_NAME}:${env:IMAGE_TAG} `
-            -n dev
+          kubectl set image deployment/java-app java-app=${env:IMAGE_NAME}:${env:IMAGE_TAG} -n dev
 
       - name: Wait for Rollout
         shell: powershell
