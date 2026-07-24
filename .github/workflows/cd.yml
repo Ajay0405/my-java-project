@@ -20,7 +20,11 @@ env:
 
 jobs:
   deploy:
-    runs-on: self-hosted
+    runs-on:
+      - self-hosted
+      - Windows
+      - X64
+      - ajay-runner-2
 
     if: >
       github.event_name == 'workflow_dispatch' ||
