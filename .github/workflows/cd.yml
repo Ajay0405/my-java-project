@@ -9,82 +9,63 @@ on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: "Docker image tag (default: latest)"
-        required: false
-        default: "latest"
+        description: "Docker Image Tag"
+        required: true
+        default: "3"
+        type: string
 
 env:
-  IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/my-java-app
-  NAMESPACE: dev
-  DEPLOYMENT_NAME: java-app
-  CONTAINER_NAME: java-app
+  IMAGE_NAME: ajaygangarapu/my-java-app
 
 jobs:
   deploy:
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
+    runs-on: self-hosted
 
-    runs-on:
-      - self-hosted
-      - Windows
-      - X64
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success')
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Verify Kubernetes Cluster
+      - name: Verify Cluster
         shell: powershell
         run: |
-          kubectl version --client
           kubectl get nodes
           kubectl get ns
 
-      - name: Determine Image Tag
+      - name: Set Image Tag
         shell: powershell
         run: |
           if ("${{ github.event_name }}" -eq "workflow_dispatch") {
-            echo "IMAGE_TAG=${{ github.event.inputs.image_tag }}" >> $env:GITHUB_ENV
+            "IMAGE_TAG=${{ github.event.inputs.image_tag }}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           }
           else {
-            echo "IMAGE_TAG=latest" >> $env:GITHUB_ENV
+            "IMAGE_TAG=3" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           }
-
-      - name: Pull Docker Image
-        shell: powershell
-        run: |
-          docker pull $env:IMAGE_NAME:$env:IMAGE_TAG
 
       - name: Deploy Kubernetes Manifests
         shell: powershell
         run: |
-          kubectl apply -f k8s/
+          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
 
       - name: Update Deployment Image
         shell: powershell
         run: |
-          kubectl set image deployment/$env:DEPLOYMENT_NAME `
-            $env:CONTAINER_NAME=$env:IMAGE_NAME:$env:IMAGE_TAG `
-            -n $env:NAMESPACE
+          kubectl set image deployment/java-app java-app=${env:IMAGE_NAME}:${env:IMAGE_TAG} -n dev
 
       - name: Wait for Rollout
         shell: powershell
         run: |
-          kubectl rollout status deployment/$env:DEPLOYMENT_NAME -n $env:NAMESPACE --timeout=180s
+          kubectl rollout status deployment/java-app -n dev
 
       - name: Verify Deployment
         shell: powershell
         run: |
-          kubectl get deployments -n $env:NAMESPACE
-          kubectl get pods -n $env:NAMESPACE
-          kubectl get svc -n $env:NAMESPACE
-
-      - name: Deployment Summary
-        shell: powershell
-        run: |
-          Write-Host "=================================="
-          Write-Host "Deployment Successful"
-          Write-Host "Image: $env:IMAGE_NAME:$env:IMAGE_TAG"
-          Write-Host "Namespace: $env:NAMESPACE"
-          Write-Host "=================================="
+          kubectl get deployment -n dev
+          kubectl get pods -n dev
+          kubectl get svc -n dev
